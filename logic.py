@@ -19,6 +19,5 @@ async def scrape_resumes(link):
                 pass
             else:
                 await page.goto(f'{link}&page={count - 1}, wait_until="domcontentloaded"')
-            await asyncio.sleep(3)
             print('page', count)
             count += 1
