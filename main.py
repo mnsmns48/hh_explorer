@@ -2,9 +2,10 @@ import asyncio
 import time
 from datetime import datetime
 
+from crud import resumes_out
 from engine import sync_db, db_engine, settings
-from logic import scrape_resumes
-from models import HHBase
+from logic_resumes import scrape_resumes
+from models import HHBase, Resume
 
 
 async def main():
@@ -23,7 +24,8 @@ async def main():
         '&hhtmFrom=resume_search_catalog'
         '&hhtmFromLabel=resume_search_line'
     )
-    await scrape_resumes(link=url)
+    # await scrape_resumes(link=url)
+    await resumes_out(base=Resume)
 
 
 if __name__ == '__main__':

@@ -15,3 +15,5 @@ class Resume(HHBase):
     salary: Mapped[str | None]
     status: Mapped[str | None]
     prev_employment: Mapped[str | None]
+
+
