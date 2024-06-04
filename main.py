@@ -2,10 +2,13 @@ import asyncio
 import time
 from datetime import datetime
 
+from engine import sync_db, db_engine, settings
 from logic import scrape_resumes
+from models import HHBase
 
 
 async def main():
+    await sync_db(engine=db_engine, db_settings=settings, base=HHBase)
     url = (
         'https://hh.ru/search/resume'
         '?text=водитель+трамвая'

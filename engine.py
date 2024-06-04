@@ -1,13 +1,18 @@
+import asyncio
 import os
 from asyncio import current_task
 from contextlib import asynccontextmanager
 from datetime import date
 from pathlib import Path
+from typing import Type
 
+import asyncpg
+from asyncpg import InvalidCatalogNameError
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings
 from sqlalchemy import URL, NullPool
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession, async_scoped_session
+from sqlalchemy.orm import DeclarativeBase
 
 today = date.today()
 root_path = Path(os.path.abspath(__file__)).parent
@@ -65,3 +70,23 @@ class DataBase:
             await session.remove()
 
 
+db_engine = DataBase(get_url(engine_settings=settings), echo=settings.echo)
+
+
+async def sync_db(engine: DataBase, db_settings: Settings, base: Type[DeclarativeBase]):
+    try:
+        async with engine.engine.begin() as async_connect:
+            await async_connect.run_sync(base.metadata.create_all)
+    except InvalidCatalogNameError:
+        conn = await asyncpg.connect(database='postgres',
+                                     user=db_settings.username,
+                                     password=db_settings.password.get_secret_value(),
+                                     host=db_settings.host,
+                                     port=db_settings.port
+                                     )
+        sql = f'CREATE DATABASE "{db_settings.database}"'
+        await conn.execute(sql)
+        await conn.close()
+        print(f"DB <{db_settings.database}> success created")
+        async with engine.engine.begin() as async_connect:
+            await async_connect.run_sync(base.metadata.create_all)

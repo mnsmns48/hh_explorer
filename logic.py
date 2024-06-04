@@ -4,6 +4,9 @@ from bs4 import BeautifulSoup
 from playwright.async_api import async_playwright
 
 from browser import run_browser
+from crud import write_data
+from engine import db_engine
+from models import Resume
 
 
 async def bs4_resumes(soup: BeautifulSoup) -> list:
@@ -21,7 +24,7 @@ async def bs4_resumes(soup: BeautifulSoup) -> list:
                 'title': title.span.text,
                 'age': age.text.strip() if age else None,
                 'link': f"https://hh.ru{title.get('href').split('?query=')[0]}",
-                'excpirience': excpirience.text.strip() if excpirience else None,
+                'excpirience': excpirience.text.strip()if excpirience else None,
                 'salary': salary.text.strip() if salary and salary.text.strip() != 'Опыт работы' else None,
                 'status': status.text.strip() if status else None,
                 'prev_employment': prev_employment.text.strip() if prev_employment else None
@@ -39,18 +42,16 @@ async def scrape_resumes(link):
         page.set_default_timeout(0)
         last_pag = await page.locator("//a[@class='bloko-button']").nth(-2).inner_text()
         count = 1
-        while count != int(last_pag) + 1:
-            if count == 1:
-                pass
-            else:
-                await page.locator("//a[@class='bloko-button']").nth(count - 1).click()
-            print('page:', count)
-            html = await page.locator("xpath=//main[@class='resume-serp-content']").inner_html()
-            soup = BeautifulSoup(markup=html, features='lxml')
-            data = await bs4_resumes(soup=soup)
-            for line in data:
-                for k, v in line.items():
-                    print(f"{k}: {v}")
-                print('\n>>>>>>>>>')
-            print('-------------------------')
-            count += 1
+        print('pages:', last_pag)
+        async with db_engine.scoped_session() as session:
+            while count != int(last_pag) + 1:
+                if count == 1:
+                    pass
+                else:
+                    await page.locator("//a[@class='bloko-button']").nth(count - 1).click()
+                html = await page.locator("xpath=//main[@class='resume-serp-content']").inner_html()
+                soup = BeautifulSoup(markup=html, features='lxml')
+                data = await bs4_resumes(soup=soup)
+                await write_data(session=session, table=Resume, data=data)
+                print('page:', count, 'added')
+                count += 1
