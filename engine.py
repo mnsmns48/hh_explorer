@@ -1,37 +1,20 @@
-import asyncio
-import os
 from asyncio import current_task
 from contextlib import asynccontextmanager
-from datetime import date
-from pathlib import Path
 from typing import Type
 
 import asyncpg
 from asyncpg import InvalidCatalogNameError
-from pydantic import SecretStr
-from pydantic_settings import BaseSettings
 from sqlalchemy import URL, NullPool
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession, async_scoped_session
 from sqlalchemy.orm import DeclarativeBase
 
-today = date.today()
-root_path = Path(os.path.abspath(__file__)).parent
+from config import Settings
 
-
-class Settings(BaseSettings):
-    driver_name: str
-    username: str
-    password: SecretStr
-    host: str
-    port: int
-    echo: bool
-    database: str
-
-
-settings = Settings(_env_file=f"{root_path}/.env")
+settings = Settings()
 
 
 def get_url(engine_settings: Settings) -> URL:
+    # формирует строку для движка обращения к БД
     url_object = URL.create(
         drivername=engine_settings.driver_name,
         username=engine_settings.username,
@@ -73,7 +56,13 @@ class DataBase:
 db_engine = DataBase(get_url(engine_settings=settings), echo=settings.echo)
 
 
-async def sync_db(engine: DataBase, db_settings: Settings, base: Type[DeclarativeBase]):
+async def database_sync(engine: DataBase,
+                        db_settings: Settings,
+                        base: Type[
+                            DeclarativeBase]):
+    # Функция создания БД и таблиц.
+    # Не работает под Windows.
+    # Если работаете под Windows, просто создайте БД вручную. Таблицы "подтянуться"
     try:
         async with engine.engine.begin() as async_connect:
             await async_connect.run_sync(base.metadata.create_all)
@@ -88,5 +77,5 @@ async def sync_db(engine: DataBase, db_settings: Settings, base: Type[Declarativ
         await conn.execute(sql)
         await conn.close()
         print(f"DB <{db_settings.database}> success created")
-        async with engine.engine.begin() as async_connect:
-            await async_connect.run_sync(base.metadata.create_all)
+    async with engine.engine.begin() as async_connect:
+        await async_connect.run_sync(base.metadata.create_all)
