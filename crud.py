@@ -9,14 +9,15 @@ from engine import db_engine, settings
 from models import Areas, Vacancies
 
 
-async def get_area_title(session: AsyncSession, id_: int) -> str:
+async def get_area_title(session: AsyncSession,
+                         id_: int) -> str:
     query = select(Areas.name).filter(Areas.id == id_)
     response = await session.execute(query)
     result = response.scalar_one()
     return result
 
 
-async def get_job_without_text(session: AsyncSession):
+async def get_joblist_without_text(session: AsyncSession):
     query = (select(Vacancies.url)
              .order_by(Vacancies.id).limit(settings.job_texts_quantity))
     response = await session.execute(query)
@@ -24,7 +25,9 @@ async def get_job_without_text(session: AsyncSession):
     return result
 
 
-async def write_data(session: AsyncSession, table: DeclarativeAttributeIntercept, data: list | dict) -> None:
+async def write_data(session: AsyncSession,
+                     table: DeclarativeAttributeIntercept,
+                     data: list | dict) -> None:
     await session.execute(insert(table).values(data).on_conflict_do_nothing())
     await session.commit()
 

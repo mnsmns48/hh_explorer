@@ -5,30 +5,23 @@ from datetime import datetime
 import aiohttp
 
 from engine import database_sync, db_engine, settings
+from scrape_resumes import logic_resumes
 
 from scrape_vacancies import logic_vacancies
-from scrape_areas import get_areas
 from models import Base
 
-TEXT = 'Аналитик данных'
-AREA = 1
+TEXT = 'Технолог'
+AREA = 1844
 
 
 async def start_scrape():
-    async with db_engine.engine.begin() as async_connect:
-        await async_connect.run_sync(Base.metadata.drop_all)  # Очищаем таблицы БД
-    await database_sync(engine=db_engine, db_settings=settings, base=Base)  # Создаем таблицы если они ещё не созданы
-    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as aio_session:
-        await logic_vacancies(aio_session=aio_session, text=TEXT, area=AREA)  # Собираем данные и добавляем в БД
-    # print('Введите текст запроса')
-    # text = str(input())
-    # print('Введите регион (целое число)')
-    # area = int(input())
-    # await scrape_resumes(text='Садовник', area=2)
-    # await resumes_out(base=Resumes)
-    # await scrape_vacancies(
-    #     search_line='?text=Java+разработчик&area=113&hhtmFrom=resume_search_result&hhtmFromLabel=vacancy_search_line'
-    # )
+    # Создаем таблицы, если они ещё не созданы или очищаем данные, если есть
+    # await database_sync(engine=db_engine, db_settings=settings, base=Base)
+    # Собираем вакансии и добавляем в БД
+    # async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as aio_session:
+    #     await logic_vacancies(aio_session=aio_session, text=TEXT, area=AREA)
+    await logic_resumes(text=TEXT, area=2)
+
 
 
 if __name__ == '__main__':

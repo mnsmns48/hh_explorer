@@ -6,7 +6,7 @@ from datetime import datetime
 from aiohttp import ClientSession
 
 from config import ua
-from crud import get_area_title, write_data, get_job_without_text, update_data
+from crud import get_area_title, write_data, get_joblist_without_text, update_data
 from engine import db_engine
 from logger_config import logger
 from models import Vacancies
@@ -30,15 +30,17 @@ async def logic_vacancies(aio_session: ClientSession, text: str, area: int):
     SEARCH_LINE = (f'?text={text}'
                    f'&area={area}'
                    f'&per_page=100')
+    jobs_count = int()
     for SCHEDULE in SCHEDULES:
         for EXP in EXPERIENCE:
             data = await get_data(aio_session=aio_session, url=f'{API_URL}'
                                                                f'{SEARCH_LINE}'
                                                                f'&schedule={SCHEDULE}'
                                                                f'&experience={EXP}')
-            logger.debug(f"{area_name} {SCHEDULE} {EXP} vacancies {data['found']} pages {data['pages']}")
+            logger.debug(f"{text} {area_name} {SCHEDULE}__{EXP}// vacancies: {data['found']} pages: {data['pages']}")
             if data['found'] > 0:
                 await process_vac_list(job_list=data['items'])
+                jobs_count += len(data['items'])
             if data['pages'] > 1:
                 page = 1
                 while page != data['pages']:
@@ -48,11 +50,12 @@ async def logic_vacancies(aio_session: ClientSession, text: str, area: int):
                                                         f'&schedule={SCHEDULE}&page={page}')
                     if isinstance(next_page_data, dict):
                         await process_vac_list(job_list=next_page_data['items'])
-                        logger.debug(f"page {page} add {len(next_page_data['items'])} vacancies")
                         page += 1
+                        jobs_count += len(next_page_data['items'])
                     else:
-                        print(next_page_data)
+                        logger.debug('Error scraping', next_page_data)
                 await asyncio.sleep(0.4)
+    logger.debug(f"--------------------------TOTAL: {text} {area_name} {jobs_count} vacancies")
     await job_text_filing(aio_session=aio_session)
 
 
@@ -79,9 +82,10 @@ async def process_vac_list(job_list: list):
 
 async def job_text_filing(aio_session: ClientSession):
     async with db_engine.scoped_session() as db_session:
-        job_url_list = await get_job_without_text(session=db_session)
-        for j in job_url_list:
-            job_id = j.rsplit('/', 1)[-1]
+        job_url_list = await get_joblist_without_text(session=db_session)
+        logger.debug(f"Start collecting texts from {len(job_url_list)} vacancies\n\n")
+        for url in job_url_list:
+            job_id = url.rsplit('/', 1)[-1]
             job = await get_data(aio_session=aio_session, url=f"{API_URL}/{job_id}")
             text = re.sub(r'<[^<>]*>', '', job['description'])
             result = {'skills': [n['name'] for n in job['key_skills']], 'text': text}
@@ -90,4 +94,4 @@ async def job_text_filing(aio_session: ClientSession):
                               table=Vacancies,
                               data=result,
                               column=Vacancies.url,
-                              value=j)
+                              value=url)

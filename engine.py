@@ -61,11 +61,13 @@ async def database_sync(engine: DataBase,
                         base: Type[
                             DeclarativeBase]):
     # Функция создания БД и таблиц.
+    # При каждом запуске, данные в таблицах очищаются, если они есть
     # Не работает под Windows.
     # Если работаете под Windows, просто создайте БД вручную. Таблицы "подтянуться"
     try:
         async with engine.engine.begin() as async_connect:
             await async_connect.run_sync(base.metadata.create_all)
+            await async_connect.run_sync(base.metadata.drop_all)
     except InvalidCatalogNameError:
         conn = await asyncpg.connect(database='postgres',
                                      user=db_settings.username,
