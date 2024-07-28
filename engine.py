@@ -58,8 +58,7 @@ db_engine = DataBase(get_url(engine_settings=settings), echo=settings.echo)
 
 async def database_sync(engine: DataBase,
                         db_settings: Settings,
-                        base: Type[
-                            DeclarativeBase]):
+                        base: Type[DeclarativeBase]):
     # Функция создания БД и таблиц.
     # При каждом запуске, данные в таблицах очищаются, если они есть
     # Не работает под Windows.

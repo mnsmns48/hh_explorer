@@ -5,30 +5,33 @@ from datetime import datetime
 import aiohttp
 
 from engine import database_sync, db_engine, settings
-from scrape_resumes import logic_resumes
+from logger_config import logger
+from scrape_resumes import scrape_resumes
 
-from scrape_vacancies import logic_vacancies
+from scrape_vacancies import scrape_vacancies
 from models import Base
 
-TEXT = 'Технолог'
-AREA = 1844
+TEXT = 'Python разработчик'
+AREA = 2
 
 
 async def start_scrape():
     # Создаем таблицы, если они ещё не созданы или очищаем данные, если есть
-    # await database_sync(engine=db_engine, db_settings=settings, base=Base)
+    await database_sync(engine=db_engine, db_settings=settings, base=Base)
+    logger.info('DataBase synchronized')
     # Собираем вакансии и добавляем в БД
-    # async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as aio_session:
-    #     await logic_vacancies(aio_session=aio_session, text=TEXT, area=AREA)
-    await logic_resumes(text=TEXT, area=2)
-
+    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as aio_session:
+        await scrape_vacancies(aio_session=aio_session, text=TEXT, area=AREA)
+    # Собираем резюме и добавляем в БД
+    # await scrape_resumes(text=TEXT, area=AREA)
 
 
 if __name__ == '__main__':
     try:
         start = time.time()
-        print('script started', datetime.now())
+        logger.info(f'Script started {datetime.now().strftime("%d-%m-%Y %H:%M:%S")}')
         asyncio.run(start_scrape())
-        print(f"Скрипт завершен за {int(time.time() - start)} секунд")
+        logger.info(f"Script completed in {int(time.time() - start)} seconds --------------------------\n")
+
     except (KeyboardInterrupt, SystemExit):
-        print('script stopped')
+        logger.info(f"Script stopped")
